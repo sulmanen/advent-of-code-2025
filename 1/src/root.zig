@@ -47,34 +47,28 @@ pub fn readInput(filename: []const u8) !void {
 }
 
 pub fn rotate(value: i32, by: i32) struct { quotient: i32, remainder: i32 } {
-    var result = value + by;
+    const result: i32 = value + by;
     var crossed_zero: i32 = 0;
 
-    if ((result < 0) or result == 0) {
+    if ((result < 0)) {
         crossed_zero = crossed_zero + 1;
     }
 
-    var position: i32 = 0;
+    std.debug.print("result: {d}\n", .{result});
+    std.debug.print("mod: {d}\n", .{@mod(result, 100)});
+
+    var normalizedResult = result;
 
     if (result < 0) {
-        position = (100 - @mod(result, 100));
-    } else if (result > 0) {
-        position = @mod(result, 100);
+        normalizedResult = result * -1;
     }
 
-    if (result < 0) {
-        result = result * -1;
-    }
-
-    return .{ .quotient = @divTrunc(result, 100) + crossed_zero, .remainder = position };
-}
-
-test "basic add functionality" {
-    try std.testing.expect(add(3, 7) == 10);
+    return .{ .quotient = @divTrunc(normalizedResult, 100) + crossed_zero, .remainder = @mod(result, 100) };
 }
 
 test "rotate past zero" {
     const result = rotate(50, -51);
+
     try std.testing.expect(result.quotient == 1);
     try std.testing.expect(result.remainder == 99);
 }
@@ -82,5 +76,17 @@ test "rotate past zero" {
 test "rotate past 99" {
     const result = rotate(50, 50);
     try std.testing.expect(result.quotient == 1);
+    try std.testing.expect(result.remainder == 0);
+}
+
+test "rotate past 99 multiple times" {
+    const result = rotate(50, 150);
+    try std.testing.expect(result.quotient == 2);
+    try std.testing.expect(result.remainder == 0);
+}
+
+test "rotate past zero multiple times" {
+    const result = rotate(50, -150);
+    try std.testing.expect(result.quotient == 2);
     try std.testing.expect(result.remainder == 0);
 }
