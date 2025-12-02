@@ -40,7 +40,7 @@ pub fn readInput(filename: []const u8) !void {
         currentValue = rotation.remainder;
         password = password + rotation.quotient;
 
-        std.debug.print("{d}--{d}\n", .{ currentValue, by });
+        std.debug.print("{d}--{d}\n", .{ currentValue, rotation.quotient });
     }
 
     std.debug.print("Password: {d}\n", .{password});
@@ -50,12 +50,9 @@ pub fn rotate(value: i32, by: i32) struct { quotient: i32, remainder: i32 } {
     const result: i32 = value + by;
     var crossed_zero: i32 = 0;
 
-    if ((result < 0)) {
+    if ((result < 0 and value != 0) or result == 0) {
         crossed_zero = crossed_zero + 1;
     }
-
-    std.debug.print("result: {d}\n", .{result});
-    std.debug.print("mod: {d}\n", .{@mod(result, 100)});
 
     var normalizedResult = result;
 
@@ -88,5 +85,11 @@ test "rotate past 99 multiple times" {
 test "rotate past zero multiple times" {
     const result = rotate(50, -150);
     try std.testing.expect(result.quotient == 2);
+    try std.testing.expect(result.remainder == 0);
+}
+
+test "rotate to zero" {
+    const result = rotate(50, -50);
+    try std.testing.expect(result.quotient == 1);
     try std.testing.expect(result.remainder == 0);
 }
