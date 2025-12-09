@@ -89,19 +89,22 @@ pub fn numberRepeatsBackToBack(number: [*c]const u8) bool {
     return false;
 }
 
-test "number does not repeat" {
-    try std.testing.expect(numberRepeatsBackToBack("12") == false);
+test "12 does not repeat" {
+    const number: [:0]const u8 = "12";
+    try std.testing.expect(numberRepeatsBackToBack(number) == false);
 }
 
-test "small number repeats" {
-    try std.testing.expect(numberRepeatsBackToBack("11") == true);
+test "11 repeats" {
+    const number: [:0]const u8 = "11";
+    try std.testing.expect(numberRepeatsBackToBack(number) == true);
 }
 
-test "number repeats" {
-    try std.testing.expect(numberRepeatsBackToBack("22") == true);
+test "22 repeats" {
+    const number: [:0]const u8 = "22";
+    try std.testing.expect(numberRepeatsBackToBack(number) == true);
 }
 
-test "number repeats simply" {
+test "1212 repeats" {
     const number: [:0]const u8 = "1212";
     try std.testing.expect(numberRepeatsBackToBack(number) == true);
 }
@@ -120,5 +123,5 @@ test "find invalid ID between" {
     try findInvalidIDBetween(11, 22, &list, gpa.allocator());
     try std.testing.expect(list.items.len == 2);
     try std.testing.expect(list.items[0] == 11);
-    try std.testing.expect(list.items[1] == 21);
+    try std.testing.expect(list.items[1] == 22);
 }
