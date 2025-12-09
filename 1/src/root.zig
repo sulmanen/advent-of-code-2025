@@ -65,7 +65,6 @@ pub fn rotate(value: i32, by: i32) struct { quotient: i32, remainder: i32 } {
 
 test "rotate past zero" {
     const result = rotate(50, -51);
-
     try std.testing.expect(result.quotient == 1);
     try std.testing.expect(result.remainder == 99);
 }
