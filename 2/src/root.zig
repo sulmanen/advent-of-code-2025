@@ -95,7 +95,7 @@ pub fn findInvalidIDBetween(left: usize, right: usize, invalidIds: *std.ArrayLis
 }
 
 pub fn numberRepeatsBackToBack(number: []const u8) bool {
-    const pattern = "^(\\d+)\\1$";
+    const pattern = "^(\\d+)\\1+$";
 
     var errcode: c_int = 0;
     var erroffset: usize = 0;
