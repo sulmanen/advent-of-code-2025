@@ -82,8 +82,8 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
+    exe.linkSystemLibrary("pcre2-8");
     exe.linkLibC();
-
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default
     // step). By default the install prefix is `zig-out/` but can be overridden
@@ -133,6 +133,7 @@ pub fn build(b: *std.Build) void {
         .root_module = exe.root_module,
     });
 
+    exe_tests.linkSystemLibrary("pcre2-8");
     exe_tests.linkLibC();
 
     // A run step that will run the second test executable.

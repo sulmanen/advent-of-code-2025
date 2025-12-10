@@ -1,6 +1,35 @@
 const std = @import("std");
+const c = @cImport({
+    @cDefine("PCRE2_CODE_UNIT_WIDTH", "8");
+    @cInclude("pcre2.h");
+});
 
-const c = @cImport(@cInclude("regex.h"));
+extern fn pcre2_compile_8(
+    pattern: [*c]const u8,
+    length: usize,
+    options: u32,
+    errorcode: *c_int,
+    erroroffset: *usize,
+    ccontext: ?*anyopaque,
+) ?*anyopaque;
+
+extern fn pcre2_match_8(
+    code: ?*const anyopaque,
+    subject: [*c]const u8,
+    length: usize,
+    startoffset: usize,
+    options: u32,
+    match_data: ?*anyopaque,
+    mcontext: ?*anyopaque,
+) c_int;
+
+extern fn pcre2_match_data_create_from_pattern_8(
+    code: ?*const anyopaque,
+    gcontext: ?*anyopaque,
+) ?*anyopaque;
+
+extern fn pcre2_match_data_free_8(match_data: ?*anyopaque) void;
+extern fn pcre2_code_free_8(code: ?*anyopaque) void;
 
 pub fn bufferedPrint() !void {
     // Stdout is for the actual output of your application, for example if you
@@ -16,9 +45,8 @@ pub fn bufferedPrint() !void {
 }
 
 pub fn readInput(filename: []const u8) !void {
-    var invalidIds = std.ArrayList(usize).initCapacity(std.heap.page_allocator, 100);
-    defer invalidIds.deinit();
-
+    var invalidIds = try std.ArrayList(usize).initCapacity(std.heap.page_allocator, 100);
+    defer invalidIds.deinit(std.heap.page_allocator);
     const file = try std.fs.cwd().openFile(filename, .{});
     defer file.close();
 
@@ -35,14 +63,25 @@ pub fn readInput(filename: []const u8) !void {
             var partIter = std.mem.splitSequence(u8, part, "-");
             const left = partIter.next().?;
             const right = partIter.next().?;
+            std.debug.print("left {s}, right {s}\n", .{ left, right });
+            const left_trimmed = std.mem.trimRight(u8, left, " \t\n\r");
+            const right_trimmed = std.mem.trimRight(u8, right, " \t\n\r");
 
-            std.debug.print("Left: {s}, Right: {s}\n", .{ left, right });
+            const left_int = try std.fmt.parseInt(usize, left_trimmed, 10);
+            const right_int = try std.fmt.parseInt(usize, right_trimmed, 10);
+            std.debug.print("left {d}, right {d}\n", .{ left_int, right_int });
+            try findInvalidIDBetween(left_int, right_int, &invalidIds, std.heap.page_allocator);
         }
     }
+    var result: usize = 0;
+    for (invalidIds.items) |item| {
+        result += item;
+    }
+    std.debug.print("Sum of invalid IDs: {d}\n", .{result});
 }
 
 pub fn findInvalidIDBetween(left: usize, right: usize, invalidIds: *std.ArrayList(usize), allocator: std.mem.Allocator) !void {
-    for (left..right) |id| {
+    for (left..right + 1) |id| {
         const id_str = std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{id}) catch unreachable;
         defer std.heap.page_allocator.free(id_str);
         const id_str_z = try allocator.dupeZ(u8, id_str);
@@ -55,36 +94,51 @@ pub fn findInvalidIDBetween(left: usize, right: usize, invalidIds: *std.ArrayLis
     }
 }
 
-pub fn numberRepeatsBackToBack(number: [*c]const u8) bool {
-    var regex: c.regex_t = undefined;
+pub fn numberRepeatsBackToBack(number: []const u8) bool {
+    const pattern = "^(\\d+)\\1$";
 
-    const pattern: [*c]const u8 = "^([[:digit:]]+)\\1";
-    const compileSuccess = c.regcomp(&regex, pattern, c.REG_EXTENDED);
+    var errcode: c_int = 0;
+    var erroffset: usize = 0;
 
-    if (compileSuccess != 0) {
-        std.debug.print("Failed to compile Regular Expression\n", .{});
+    const re = pcre2_compile_8(
+        pattern.ptr,
+        pattern.len,
+        0,
+        &errcode,
+        &erroffset,
+        null,
+    );
+
+    if (re == null) {
+        std.debug.print("PCRE2 compilation failed at offset {}: error {}\n", .{ erroffset, errcode });
         return false;
     }
-    defer c.regfree(&regex);
-    var matches: [5]c.regmatch_t = undefined;
-    const result = c.regexec(&regex, number, matches.len, &matches, 0);
+    defer pcre2_code_free_8(re);
+    // Create match data
+    const match_data = pcre2_match_data_create_from_pattern_8(re, null);
+    if (match_data == null) {
+        std.debug.print("Failed to create match data\n", .{});
+        return false;
+    }
+    defer pcre2_match_data_free_8(match_data);
 
-    if (result == 0) {
-        std.debug.print("Match found!\n", .{});
-        for (matches, 0..) |m, i| {
-            const start_offset = m.rm_so;
-            if (start_offset == -1) break;
+    const rc = pcre2_match_8(
+        re,
+        number.ptr,
+        number.len,
+        0,
+        0,
+        match_data,
+        null,
+    );
 
-            const end_offset = m.rm_eo;
-
-            const match = number[@intCast(start_offset)..@intCast(end_offset)];
-            std.debug.print("matches[{d}] = {s}\n", .{ i, match });
-        }
+    if (rc >= 0) {
+        std.debug.print("✓ '{s}'\n", .{number});
         return true;
-    } else if (result == c.REG_NOMATCH) {
-        std.debug.print("No match found\n", .{});
+    } else if (rc == c.PCRE2_ERROR_NOMATCH) {
+        std.debug.print("✗ '{s}'\n", .{number});
     } else {
-        std.debug.print("Regex execution error\n", .{});
+        std.debug.print("Error {}: '{s}'\n", .{ rc, number });
     }
     return false;
 }
