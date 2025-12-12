@@ -1,5 +1,6 @@
 //! By convention, root.zig is the root source file when making a library.
 const std = @import("std");
+const JOLTAGE_DIGITS = 12;
 
 pub fn bufferedPrint() !void {
     // Stdout is for the actual output of your application, for example if you
@@ -73,7 +74,7 @@ pub fn readInputTwo(filename: []const u8) !void {
     var file_buffer: [4096]u8 = undefined;
     var reader = file.reader(&file_buffer);
     var line_no: usize = 0;
-    var total_output_joltage: i64 = 0;
+    var total_output_joltage: u512 = 0;
 
     while (try reader.interface.takeDelimiter('\n')) |line| {
         line_no += 1;
@@ -105,55 +106,73 @@ fn byIndex(context: void, a: NumberAndIndex, b: NumberAndIndex) bool {
     return a.index < b.index;
 }
 
-pub fn findJoltage(number_string: []const u8) !i64 {
-    var numbers = try std.ArrayList(NumberAndIndex).initCapacity(std.heap.page_allocator, 100);
-    defer numbers.deinit(std.heap.page_allocator);
+pub fn removeNumberAtIndex(number_string: []const u8, index: usize, to_remove: usize) !u512 {
+    const start = number_string[0..index];
+    var end: []const u8 = "";
+    if (index + 1 < number_string.len - to_remove) {
+        end = number_string[index + 1 .. number_string.len - to_remove];
+    }
+    const new_number_string = try std.mem.concat(std.heap.page_allocator, u8, &.{ start, end });
+    return try std.fmt.parseInt(u512, new_number_string, 10);
+}
+
+pub fn removeFromEnd(number_string: []const u8, to_remove: usize) !u512 {
+    const start = number_string[0 .. number_string.len - to_remove];
+    return try std.fmt.parseInt(u512, start, 10);
+}
+
+pub fn findJoltage(number_string: []const u8) !u512 {
+    var removeIndeces = try std.ArrayList(usize).initCapacity(std.heap.page_allocator, 100);
+    defer removeIndeces.deinit(std.heap.page_allocator);
     const trimmed_number_string = std.mem.trimRight(u8, number_string, " \t\n\r");
 
-    for (trimmed_number_string, 0..) |number, i| {
-        const num: i64 = number - '0';
-        try numbers.append(std.heap.page_allocator, NumberAndIndex{ .number = num, .index = i });
+    var to_remove = trimmed_number_string.len - JOLTAGE_DIGITS;
+    var removed: usize = 0;
+    var current_number_string = trimmed_number_string;
+    var i: usize = 0;
+    while (to_remove > 0 and i < trimmed_number_string.len) : (i += 1) {
+        const newNumber = try removeNumberAtIndex(current_number_string, i - removed, to_remove - 1);
+        const compareNumber = try removeFromEnd(current_number_string, to_remove);
+        std.debug.print("{d} > {d} = {}\n", .{ newNumber, compareNumber, newNumber > compareNumber });
+        if (newNumber >= compareNumber) {
+            current_number_string = try std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{try removeNumberAtIndex(current_number_string, i - removed, 0)});
+            to_remove -= 1;
+            removed += 1;
+            try removeIndeces.append(std.heap.page_allocator, i);
+        }
+        std.debug.print("{s}\n", .{current_number_string});
     }
-    std.mem.sort(NumberAndIndex, numbers.items, {}, byNumber);
-
-    try numbers.resize(std.heap.page_allocator, 12);
-
-    std.mem.sort(NumberAndIndex, numbers.items, {}, byIndex);
-
-    var joltage_string: [12]u8 = .{0} ** 12;
-
-    for (numbers.items, 0..) |number, i| {
-        const num: u8 = @intCast(number.number);
-        joltage_string[i] = num + '0';
+    if (to_remove != 0) {
+        current_number_string = try std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{try removeFromEnd(current_number_string, to_remove)});
     }
-    const joltage = try std.fmt.parseInt(i64, &joltage_string, 10);
+    const joltage: u512 = try std.fmt.parseInt(u512, current_number_string, 10);
     return joltage;
 }
 
-test "find joltage" {
+test "find joltage 234234234234278" {
     const input = "234234234234278";
     const expected = 434234234278;
     const actual = try findJoltage(input);
     try std.testing.expectEqual(expected, actual);
 }
 
-test "find joltage for 818181911112111" {
-    const input = "818181911112111";
-    const expected = 888911112111;
-    const actual = try findJoltage(input);
-    try std.testing.expectEqual(expected, actual);
-}
-
-test "find joltage for 987654321111111" {
+test "find joltage 987654321111111" {
     const input = "987654321111111";
     const expected = 987654321111;
     const actual = try findJoltage(input);
     try std.testing.expectEqual(expected, actual);
 }
 
-test "find joltage for 811111111111119" {
+test "find joltage 811111111111119" {
     const input = "811111111111119";
     const expected = 811111111119;
+    const actual = try findJoltage(input);
+    try std.testing.expectEqual(expected, actual);
+}
+
+test "find joltage 818181911112111" {
+    const input = "818181911112111";
+    const expected = 888911112111;
     const actual = try findJoltage(input);
     try std.testing.expectEqual(expected, actual);
 }
