@@ -121,16 +121,34 @@ pub fn removeFromEnd(number_string: []const u8, to_remove: usize) !u512 {
     return try std.fmt.parseInt(u512, start, 10);
 }
 
+pub fn findStartIndex(number_string: []const u8) usize {
+    var to_remove: usize = number_string.len - JOLTAGE_DIGITS;
+    var index: usize = 0;
+    var largest_digit: u512 = 0;
+    var largest_index: usize = 0;
+    while (to_remove > 0 and index < number_string.len) : (index += 1) {
+        const new_number = number_string[index] - '0';
+        if (new_number > largest_digit) {
+            largest_digit = new_number;
+            largest_index = index;
+        }
+        to_remove -= 1;
+    }
+    std.debug.print("Largest digit: {d}, Index: {d}\n", .{ largest_digit, largest_index });
+    return largest_index;
+}
+
 pub fn findJoltage(number_string: []const u8) !u512 {
     var removeIndeces = try std.ArrayList(usize).initCapacity(std.heap.page_allocator, 100);
     defer removeIndeces.deinit(std.heap.page_allocator);
     const trimmed_number_string = std.mem.trimRight(u8, number_string, " \t\n\r");
-
-    var to_remove = trimmed_number_string.len - JOLTAGE_DIGITS;
-    var removed: usize = 0;
-    var current_number_string = trimmed_number_string;
+    const max_index = findStartIndex(number_string);
     var i: usize = 0;
-    while (to_remove > 0 and i < trimmed_number_string.len) : (i += 1) {
+    var to_remove = trimmed_number_string[max_index..].len - JOLTAGE_DIGITS;
+    var removed: usize = 0;
+    const string_with_max_start = trimmed_number_string[max_index..];
+    var current_number_string = string_with_max_start;
+    while (to_remove > 0 and i < string_with_max_start.len) : (i += 1) {
         const newNumber = try removeNumberAtIndex(current_number_string, i - removed, to_remove - 1);
         const compareNumber = try removeFromEnd(current_number_string, to_remove);
         std.debug.print("{d} > {d} = {}\n", .{ newNumber, compareNumber, newNumber > compareNumber });
@@ -173,6 +191,13 @@ test "find joltage 811111111111119" {
 test "find joltage 818181911112111" {
     const input = "818181911112111";
     const expected = 888911112111;
+    const actual = try findJoltage(input);
+    try std.testing.expectEqual(expected, actual);
+}
+
+test "find joltage 2223223335223234342422322225224113422423142441542233322124236224232234222242262232142124444266221211" {
+    const input = "2223223335223234342422322225224113422423142441542233322124236224232234222242262232142124444266221211";
+    const expected = 643446324244;
     const actual = try findJoltage(input);
     try std.testing.expectEqual(expected, actual);
 }
