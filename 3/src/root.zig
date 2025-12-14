@@ -2,19 +2,6 @@
 const std = @import("std");
 const JOLTAGE_DIGITS = 12;
 
-pub fn bufferedPrint() !void {
-    // Stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    var stdout_buffer: [1024]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-    const stdout = &stdout_writer.interface;
-
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
-
-    try stdout.flush(); // Don't forget to flush!
-}
-
 pub fn readInput(filename: []const u8) !void {
     const file = try std.fs.cwd().openFile(filename, .{});
     defer file.close();
