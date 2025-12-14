@@ -8,8 +8,8 @@ const CoOrdinate = struct {
     row: i64,
     column: i64,
 };
-const GRID_WIDTH: usize = 10;
-const GRID_HEIGHT: usize = 10;
+const GRID_WIDTH: usize = 140;
+const GRID_HEIGHT: usize = 140;
 
 pub fn findSize(filename: []const u8) !Rectangle {
     const file = try std.fs.cwd().openFile(filename, .{});
@@ -59,30 +59,32 @@ pub fn forkLiftCanAccess(grid: *[GRID_HEIGHT][GRID_WIDTH]bool, row_index: usize,
     const left: CoOrdinate = .{ .row = @intCast(row_index), .column = if (column_index > 0) @intCast(column_index - 1) else -1 };
 
     if (grid[row_index][column_index]) {
-        if (top_left.row < 0 and top_left.row < GRID_HEIGHT and top_left.column < 0 and top_left.column < GRID_WIDTH and grid[@intCast(top_left.row)][@intCast(top_left.column)]) {
+        if (top_left.row >= 0 and top_left.row < GRID_HEIGHT and top_left.column >= 0 and top_left.column < GRID_WIDTH and grid[@intCast(top_left.row)][@intCast(top_left.column)]) {
             has_paper += 1;
         }
-        if (top.row < 0 and top.row < GRID_HEIGHT and top.column < 0 and top.column < GRID_WIDTH and grid[@intCast(top.row)][@intCast(top.column)]) {
+        if (top.row >= 0 and top.row < GRID_HEIGHT and top.column >= 0 and top.column < GRID_WIDTH and grid[@intCast(top.row)][@intCast(top.column)]) {
             has_paper += 1;
         }
-        if (top_right.row < 0 and top_right.row < GRID_HEIGHT and top_right.column < 0 and top_right.column < GRID_WIDTH and grid[@intCast(top_right.row)][@intCast(top_right.column)]) {
+        if (top_right.row >= 0 and top_right.row < GRID_HEIGHT and top_right.column >= 0 and top_right.column < GRID_WIDTH and grid[@intCast(top_right.row)][@intCast(top_right.column)]) {
             has_paper += 1;
         }
-        if (right.row < 0 and right.row < GRID_HEIGHT and right.column < 0 and right.column < GRID_WIDTH and grid[@intCast(right.row)][@intCast(right.column)]) {
+        if (right.row >= 0 and right.row < GRID_HEIGHT and right.column >= 0 and right.column < GRID_WIDTH and grid[@intCast(right.row)][@intCast(right.column)]) {
             has_paper += 1;
         }
-        if (bottom_right.row < 0 and bottom_right.row < GRID_HEIGHT and bottom_right.column < 0 and bottom_right.column < GRID_WIDTH and grid[@intCast(bottom_right.row)][@intCast(bottom_right.column)]) {
+        if (bottom_right.row >= 0 and bottom_right.row < GRID_HEIGHT and bottom_right.column >= 0 and bottom_right.column < GRID_WIDTH and grid[@intCast(bottom_right.row)][@intCast(bottom_right.column)]) {
             has_paper += 1;
         }
-        if (bottom.row < 0 and bottom.row < GRID_HEIGHT and bottom.column < 0 and bottom.column < GRID_WIDTH and grid[@intCast(bottom.row)][@intCast(bottom.column)]) {
+        if (bottom.row >= 0 and bottom.row < GRID_HEIGHT and bottom.column >= 0 and bottom.column < GRID_WIDTH and grid[@intCast(bottom.row)][@intCast(bottom.column)]) {
             has_paper += 1;
         }
-        if (bottom_left.row < 0 and bottom_left.row < GRID_HEIGHT and bottom_left.column < 0 and bottom_left.column < GRID_WIDTH and grid[@intCast(bottom_left.row)][@intCast(bottom_left.column)]) {
+        if (bottom_left.row >= 0 and bottom_left.row < GRID_HEIGHT and bottom_left.column >= 0 and bottom_left.column < GRID_WIDTH and grid[@intCast(bottom_left.row)][@intCast(bottom_left.column)]) {
             has_paper += 1;
         }
-        if (left.row < 0 and left.row < GRID_HEIGHT and left.column < 0 and left.column < GRID_WIDTH and grid[@intCast(left.row)][@intCast(left.column)]) {
+        if (left.row >= 0 and left.row < GRID_HEIGHT and left.column >= 0 and left.column < GRID_WIDTH and grid[@intCast(left.row)][@intCast(left.column)]) {
             has_paper += 1;
         }
+    } else {
+        return false;
     }
     return has_paper < 4;
 }
