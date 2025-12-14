@@ -87,83 +87,35 @@ pub fn readInputTwo(filename: []const u8) !void {
 
     std.debug.print("Total output joltage: {d}\n", .{total_output_joltage});
 }
-const NumberAndIndex = struct {
-    number: i64,
-    index: usize,
-};
 
-fn byNumber(context: void, a: NumberAndIndex, b: NumberAndIndex) bool {
-    _ = context;
-    if (a.number == b.number) {
-        return a.index > b.index;
+pub fn findMax(number_string: []const u8, current_index: usize, numbers: *[12]u8, completed: usize, remove_window: usize) void {
+    std.debug.print("current index: {d}, completed: {d}, remove_window: {d}\n", .{ current_index, completed, remove_window });
+    if (completed == JOLTAGE_DIGITS) {
+        return;
     }
 
-    return a.number > b.number;
-}
-
-fn byIndex(context: void, a: NumberAndIndex, b: NumberAndIndex) bool {
-    _ = context;
-    return a.index < b.index;
-}
-
-pub fn removeNumberAtIndex(number_string: []const u8, index: usize, to_remove: usize) !u512 {
-    const start = number_string[0..index];
-    var end: []const u8 = "";
-    if (index + 1 < number_string.len - to_remove) {
-        end = number_string[index + 1 .. number_string.len - to_remove];
-    }
-    const new_number_string = try std.mem.concat(std.heap.page_allocator, u8, &.{ start, end });
-    return try std.fmt.parseInt(u512, new_number_string, 10);
-}
-
-pub fn removeFromEnd(number_string: []const u8, to_remove: usize) !u512 {
-    const start = number_string[0 .. number_string.len - to_remove];
-    return try std.fmt.parseInt(u512, start, 10);
-}
-
-pub fn findStartIndex(number_string: []const u8) usize {
-    var to_remove: usize = number_string.len - JOLTAGE_DIGITS;
-    var index: usize = 0;
-    var largest_digit: u512 = 0;
-    var largest_index: usize = 0;
-    while (to_remove > 0 and index < number_string.len) : (index += 1) {
-        const new_number = number_string[index] - '0';
-        if (new_number > largest_digit) {
-            largest_digit = new_number;
-            largest_index = index;
+    var largest_digit = number_string[current_index] - '0';
+    var largest_digit_index = current_index;
+    var i = current_index;
+    while (i <= current_index + remove_window) : (i += 1) {
+        const current_digit = number_string[i] - '0';
+        if (current_digit > largest_digit) {
+            largest_digit = current_digit;
+            largest_digit_index = i;
         }
-        to_remove -= 1;
     }
-    std.debug.print("Largest digit: {d}, Index: {d}\n", .{ largest_digit, largest_index });
-    return largest_index;
+    numbers[completed] = @intCast(largest_digit + '0');
+    std.debug.print("largest_digit: {d}, rwindow: {d} \n", .{ largest_digit, remove_window - (largest_digit_index - current_index) });
+    return findMax(number_string, largest_digit_index + 1, numbers, completed + 1, remove_window - (largest_digit_index - current_index));
 }
 
 pub fn findJoltage(number_string: []const u8) !u512 {
-    var removeIndeces = try std.ArrayList(usize).initCapacity(std.heap.page_allocator, 100);
-    defer removeIndeces.deinit(std.heap.page_allocator);
+    std.debug.print("\n", .{});
+    var numbers = [_]u8{'0'} ** 12;
     const trimmed_number_string = std.mem.trimRight(u8, number_string, " \t\n\r");
-    const max_index = findStartIndex(number_string);
-    var i: usize = 0;
-    var to_remove = trimmed_number_string[max_index..].len - JOLTAGE_DIGITS;
-    var removed: usize = 0;
-    const string_with_max_start = trimmed_number_string[max_index..];
-    var current_number_string = string_with_max_start;
-    while (to_remove > 0 and i < string_with_max_start.len) : (i += 1) {
-        const newNumber = try removeNumberAtIndex(current_number_string, i - removed, to_remove - 1);
-        const compareNumber = try removeFromEnd(current_number_string, to_remove);
-        std.debug.print("{d} > {d} = {}\n", .{ newNumber, compareNumber, newNumber > compareNumber });
-        if (newNumber >= compareNumber) {
-            current_number_string = try std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{try removeNumberAtIndex(current_number_string, i - removed, 0)});
-            to_remove -= 1;
-            removed += 1;
-            try removeIndeces.append(std.heap.page_allocator, i);
-        }
-        std.debug.print("{s}\n", .{current_number_string});
-    }
-    if (to_remove != 0) {
-        current_number_string = try std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{try removeFromEnd(current_number_string, to_remove)});
-    }
-    const joltage: u512 = try std.fmt.parseInt(u512, current_number_string, 10);
+    findMax(trimmed_number_string, 0, &numbers, 0, trimmed_number_string.len - JOLTAGE_DIGITS);
+    std.debug.print("Max Joltage: {s}\n", .{numbers});
+    const joltage: u512 = try std.fmt.parseInt(u512, &numbers, 10);
     return joltage;
 }
 
@@ -197,7 +149,7 @@ test "find joltage 818181911112111" {
 
 test "find joltage 2223223335223234342422322225224113422423142441542233322124236224232234222242262232142124444266221211" {
     const input = "2223223335223234342422322225224113422423142441542233322124236224232234222242262232142124444266221211";
-    const expected = 643446324244;
+    const expected = 664466221211;
     const actual = try findJoltage(input);
     try std.testing.expectEqual(expected, actual);
 }
