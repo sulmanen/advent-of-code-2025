@@ -5,6 +5,35 @@ const FreshRange = struct {
     start: u128,
     end: u128,
 };
+pub fn solveTwo(filename: []const u8) !void {
+    const file = try std.fs.cwd().openFile(filename, .{});
+    defer file.close();
+
+    var file_buffer: [4096]u8 = undefined;
+    var reader = file.reader(&file_buffer);
+
+    var freshRanges = try std.ArrayList(FreshRange).initCapacity(std.heap.page_allocator, 100);
+    defer freshRanges.deinit(std.heap.page_allocator);
+
+    while (try reader.interface.takeDelimiter('\n')) |line| {
+        const right_trimmed = std.mem.trimRight(u8, line, " \t\n\r");
+        if (right_trimmed.len == 0) break;
+
+        var freshRangeIterator = std.mem.splitSequence(u8, right_trimmed, "-");
+        const min = freshRangeIterator.next().?;
+        const max = freshRangeIterator.next().?;
+        const freshRange = FreshRange{ .start = try std.fmt.parseInt(u128, min, 10), .end = try std.fmt.parseInt(u128, max, 10) };
+        try freshRanges.append(std.heap.page_allocator, freshRange);
+    }
+
+    var freshIds: u128 = 0;
+    for (freshRanges.items) |freshRange| {
+        freshIds += freshRange.end - freshRange.start + 1;
+    }
+
+    // find overlaps between ranges here
+    std.debug.print("Fresh IDs Total: {}\n", .{freshIds});
+}
 
 pub fn solveOne(filename: []const u8) !void {
     const file = try std.fs.cwd().openFile(filename, .{});
