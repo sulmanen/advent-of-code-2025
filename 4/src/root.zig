@@ -32,7 +32,7 @@ pub fn findSize(filename: []const u8) !Rectangle {
 
     return Rectangle{ .width = grid_width, .height = grid_height };
 }
-pub fn populatePapers(filename: []const u8, grid: *[GRID_WIDTH][GRID_HEIGHT]bool) !void {
+pub fn populatePapers(filename: []const u8, grid: *[GRID_HEIGHT][GRID_WIDTH]bool) !void {
     const file = try std.fs.cwd().openFile(filename, .{});
     defer file.close();
     var file_buffer: [4096]u8 = undefined;
@@ -86,7 +86,62 @@ pub fn forkLiftCanAccess(grid: *[GRID_HEIGHT][GRID_WIDTH]bool, row_index: usize,
     } else {
         return false;
     }
-    return has_paper < 4;
+    const can_remove_paper = has_paper < 4;
+
+    return can_remove_paper;
+}
+
+pub fn forkLiftCanAccessTotal(
+    grid: *[GRID_HEIGHT][GRID_WIDTH]bool,
+    grid_height: usize,
+    grid_width: usize,
+    accessiblePapers: *std.ArrayList(CoOrdinate),
+    allocator: std.mem.Allocator,
+) !usize {
+    var i: usize = 0;
+    var forklift_can_access: usize = 0;
+    while (i < grid_height) : (i += 1) {
+        var j: usize = 0;
+        while (j < grid_width) : (j += 1) {
+            if (forkLiftCanAccess(grid, i, j)) {
+                forklift_can_access += 1;
+                try accessiblePapers.append(allocator, CoOrdinate{ .row = @intCast(i), .column = @intCast(j) });
+            }
+        }
+    }
+    return forklift_can_access;
+}
+
+pub fn removeAccessiblePapers(grid: *[GRID_HEIGHT][GRID_WIDTH]bool, accessiblePapers: *std.ArrayList(CoOrdinate)) void {
+    for (accessiblePapers.items) |paper| {
+        grid[@intCast(paper.row)][@intCast(paper.column)] = false;
+    }
+}
+
+pub fn solveTwo(filename: []const u8) !void {
+    var accessiblePapers = try std.ArrayList(CoOrdinate).initCapacity(std.heap.page_allocator, 100);
+    defer accessiblePapers.deinit(std.heap.page_allocator);
+
+    const grid_width: usize = GRID_WIDTH;
+    const grid_height: usize = GRID_HEIGHT;
+
+    var grid: [grid_height][grid_width]bool = std.mem.zeroes([grid_height][grid_width]bool);
+    try populatePapers(filename, &grid);
+
+    var forklift_total: usize = 0;
+    var forklift_can_access: usize = 1;
+    var rounds: usize = 0;
+    while (true) : (forklift_total += forklift_can_access) {
+        forklift_can_access = try forkLiftCanAccessTotal(&grid, grid_height, grid_width, &accessiblePapers, std.heap.page_allocator);
+        removeAccessiblePapers(&grid, &accessiblePapers);
+        accessiblePapers.clearAndFree(std.heap.page_allocator);
+        if (forklift_can_access == 0) {
+            break;
+        }
+        rounds += 1;
+    }
+
+    std.log.info("2: Forklift can access {d} papers after {d} rounds", .{ forklift_total, rounds });
 }
 
 pub fn solveOne(filename: []const u8) !void {
@@ -106,5 +161,5 @@ pub fn solveOne(filename: []const u8) !void {
             }
         }
     }
-    std.log.info("Forklift can access {d} papers", .{forklift_can_access});
+    std.log.info("1: Forklift can access {d} papers", .{forklift_can_access});
 }
