@@ -5,6 +5,39 @@ const FreshRange = struct {
     start: u128,
     end: u128,
 };
+fn compareByFreshRange(context: void, a: FreshRange, b: FreshRange) bool {
+    _ = context;
+    return a.start < b.start;
+}
+pub fn flattenRanges(range_to_check: FreshRange, ranges: *std.ArrayList(FreshRange)) !u128 {
+    var overlapping: u128 = 0;
+    var overlapping_accumulator: u128 = 0;
+    for (ranges.items, 0..) |range, i| {
+        overlapping = howManyOverlapping(range_to_check, range);
+        if (overlapping != 0) {
+            overlapping_accumulator += overlapping;
+            const newRange = FreshRange{ .start = @min(range_to_check.start, range.start), .end = @max(range_to_check.end, range.end) };
+            std.debug.print("New range: {}-{}\n", .{ newRange.start, newRange.end });
+            const removed = ranges.swapRemove(i);
+            std.debug.print("Removed range: {}-{}\n", .{ removed.start, removed.end });
+            try ranges.append(std.heap.page_allocator, newRange);
+            return try flattenRanges(ranges.orderedRemove(0), ranges);
+        }
+    }
+    if (overlapping_accumulator == 0) {
+        var unique_ids: u128 = 0;
+        std.mem.sort(FreshRange, ranges.items, {}, compareByFreshRange);
+
+        for (ranges.items) |range| {
+            std.debug.print("{any}\n", .{range});
+            unique_ids += range.end - range.start + 1;
+        }
+        return unique_ids;
+    }
+    try ranges.append(std.heap.page_allocator, range_to_check);
+    return try flattenRanges(ranges.orderedRemove(0), ranges);
+}
+
 pub fn solveTwo(filename: []const u8) !void {
     const file = try std.fs.cwd().openFile(filename, .{});
     defer file.close();
@@ -26,23 +59,8 @@ pub fn solveTwo(filename: []const u8) !void {
         try freshRanges.append(std.heap.page_allocator, freshRange);
     }
 
-    var all_fresh_ids: u128 = 0;
-    for (freshRanges.items) |freshRange| {
-        std.debug.print("Fresh Range: {}-{}\n", .{ freshRange.start, freshRange.end });
-        all_fresh_ids += freshRange.end - freshRange.start + 1;
-    }
+    const unique_fresh_ids: u128 = try flattenRanges(freshRanges.pop().?, &freshRanges);
 
-    std.debug.print("All Fresh Ranges length: {}\n", .{freshRanges.items.len});
-    var overlapping_fresh_ids: u128 = 0;
-    for (freshRanges.items, 0..) |freshRange, i| {
-        for (freshRanges.items, 0..) |otherFreshRange, j| {
-            if (i != j) {
-                overlapping_fresh_ids += howManyOverlapping(freshRange, otherFreshRange);
-            }
-        }
-    }
-    std.debug.print("Overlapping Fresh IDs Total: {}\n", .{overlapping_fresh_ids});
-    const unique_fresh_ids = all_fresh_ids - overlapping_fresh_ids / 2;
     std.debug.print("Unique Fresh IDs Total: {}\n", .{unique_fresh_ids});
 }
 
