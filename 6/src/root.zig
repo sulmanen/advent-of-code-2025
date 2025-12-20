@@ -1,23 +1,23 @@
 //! By convention, root.zig is the root source file when making a library.
 const std = @import("std");
 
-pub fn bufferedPrint() !void {
-    // Stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    var stdout_buffer: [1024]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
-    const stdout = &stdout_writer.interface;
+pub fn solveOne(input: []const u8) !void {
+    const file = try std.fs.cwd().openFile(input, .{});
+    defer file.close();
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    var file_buffer: [4096]u8 = undefined;
+    var reader = file.reader(&file_buffer);
+    while (try reader.interface.takeDelimiter('\n')) |line| {
+        const right_trimmed = std.mem.trimRight(u8, line, " \t\n\r");
 
-    try stdout.flush(); // Don't forget to flush!
-}
+        if (std.mem.startsWith(u8, right_trimmed, "*") or std.mem.startsWith(u8, right_trimmed, "+")) {
+            std.debug.print("Operator line: '{s}'\n", .{right_trimmed});
+        }
 
-pub fn add(a: i32, b: i32) i32 {
-    return a + b;
-}
-
-test "basic add functionality" {
-    try std.testing.expect(add(3, 7) == 10);
+        var iter = std.mem.tokenizeAny(u8, right_trimmed, " \t\n\r");
+        while (iter.next()) |token| {
+            std.debug.print("Token: '{s}'\n", .{token});
+        }
+        std.debug.print("End of line\n", .{});
+    }
 }
